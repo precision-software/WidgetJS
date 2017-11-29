@@ -57,7 +57,7 @@ class HttpFeed {
 
 
     checkForErrors = (result) => {
-        if (result.code < 200 || >= 300)
+        if (result.code < 200 || result.code >= 300)
             throw (result);
         return result;
     };

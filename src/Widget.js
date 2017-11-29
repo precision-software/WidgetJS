@@ -9,11 +9,8 @@ class Widget extends Component {
         this.state = {}
 
         // Configure a "get" configuration to fetch json data from AdoptMeApp APIs
-        this.http = axios.create({
-            baseURL: this.props.baseURL,
-            timeout: 30000,
-            responseType: 'json'
-        });
+        this.feed = new StoryFeed(this.props.url);
+        this.setFeed = feed => this.setState({feed:feed})
 
         // Stories as read from the server.  Empty means end of data.
         this.state.stories = []
@@ -21,16 +18,6 @@ class Widget extends Component {
             console.error("Widget.setStories stories=%o this=%o\n", stories, this);
             if (stories.length > 0) this.setState({stories:stories})}
 
-        // Define the subset of stories we want to display. Start reading most recent stories.
-        this.state.navigate = {id: null, dir: 'desc'}
-        this.setNavigation = (dir, stories) => {
-            let id;
-            if (stories.length === 0)   id = null
-            else if (dir === 'desc')    id = stories[0].story_id
-            else                        id = stories[stories.length - 1].story_id
-
-            this.setState({navigate:{id:id, dir:dir}})
-        }
     }
 
 
@@ -40,16 +27,14 @@ class Widget extends Component {
         console.error("Widget.render this=%o\n", this)
         return (
             <div>
-                <FetchStories http={this.http}
+                <StoryFeed url={this.props.url}
                               animalId={this.props.animalId}
                               shelterId={this.props.shelterId}
-                              dir={this.state.navigate.dir}
-                              id={this.state.navigate.id}
                               count={this.props.count}
-                              callback={this.setStories}>
-                </FetchStories>
-                <StoryNavigator stories={this.state.stories} callback={this.setNavigation}> </StoryNavigator>
-                <StoryList stories={this.state.stories}>  animalId=this.props.animalId  shelterId=this.props.shelterId </StoryList>
+                              callback={this.setFeed}>
+                </StoryFeed>
+                <FeedNavigator feed={this.state.feed} callback={this.setStories}> </FeedNavigator>
+                <StoryList stories={this.state.stories}>  </StoryList>
 
             </div>
         )
@@ -57,32 +42,30 @@ class Widget extends Component {
 }
 
 
-
-const StoryNavigator = ({stories, callback}) =>
+// TODO: deactivate buttons until data has been fetched.
+const StoryNavigator = ({feed, callback, count}) =>
     <div>
-        <button onClick={()=>callback('desc', [])}>        latest     </button>
-        <button onClick={()=>callback('desc',  stories)}>  &nbsp;&lt;&nbsp; </button>
-        <button onClick={()=>callback('asc', stories)}>  &nbsp;&gt;&nbsp; </button>
-        <button onClick={()=>callback('asc', [])}>       oldest     </button>
-    </div>
+        <button onClick={()=>feed.last(count).then(callback)}>        latest     </button>
+        <button onClick={()=>feed.next(count).then(callback)}>  &nbsp;&lt;&nbsp; </button>
+        <button onClick={()=>feed.prev(count).then(callback)}>  &nbsp;&gt;&nbsp; </button>
+        <button onClick={()=>feed.first(count).then(callback)}>       oldest     </button>
+    </div>;
 
 
+/************************************************************************************
+ * Configure the story feed for AdoptMeApp server.  Callback returns a navigatable source.
+ * @param url
+ * @param animalId
+ * @param shelterCode
+ * @param callback
+ * @returns {null}
+ * @constructor
+ */
+function StoryFeed ({url, animalId, shelterCode, callback})  {
 
-
-function FetchStories ({http, animalId, shelterCode, id, dir, count, callback})  {
-
-    // Get the stories and invoke the callback function when they arrive.
-    http.get('Widget.php', {
-        params: {
-            animal_id: animalId,
-            shelter_code: shelterCode,
-            id: id,
-            dir: dir,
-            count: count
-        }
-    })
-        .then(result => callback(result.data.stories))
-        .catch(reason => console.log("ERROR in http.get", reason));
+    // Configure a feed for navigating through stories.
+    let feed = new StoryFeed(url, animalId, shelterCode);
+    callback(feed);
 
     return null
 }
