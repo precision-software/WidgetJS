@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import './Widget.css'
 import axios from 'axios'
+import {ScrollView, View, Text, Image, Button} from 'react-native';
 
 class Widget extends Component {
 
@@ -28,7 +29,7 @@ class Widget extends Component {
             if (stories.length === 0)   id = null
             else if (dir === 'desc')    id = stories[0].story_id
             else                        id = stories[stories.length - 1].story_id
-
+            console.error("setNavigation dir=%s  id=%d  stories=%o", dir, id, stories);
             this.setState({navigate:{id:id, dir:dir}})
         }
     }
@@ -39,7 +40,7 @@ class Widget extends Component {
     render() {
         console.error("Widget.render this=%o\n", this)
         return (
-            <div>
+            <View>
                 <FetchStories http={this.http}
                               animalId={this.props.animalId}
                               shelterId={this.props.shelterId}
@@ -51,7 +52,7 @@ class Widget extends Component {
                 <StoryNavigator stories={this.state.stories} callback={this.setNavigation}> </StoryNavigator>
                 <StoryList stories={this.state.stories}>  animalId=this.props.animalId  shelterId=this.props.shelterId </StoryList>
 
-            </div>
+            </View>
         )
     }
 }
@@ -59,51 +60,95 @@ class Widget extends Component {
 
 
 const StoryNavigator = ({stories, callback}) =>
-    <div>
-        <button onClick={()=>callback('desc', [])}>        latest     </button>
-        <button onClick={()=>callback('desc',  stories)}>  &nbsp;&lt;&nbsp; </button>
-        <button onClick={()=>callback('asc', stories)}>  &nbsp;&gt;&nbsp; </button>
-        <button onClick={()=>callback('asc', [])}>       oldest     </button>
-    </div>
+    <View style={{flexDirection:'row', justifyContent:'center'}}>
+        <Button onPress={()=>callback('desc', [])}       title="latest" >   </Button>
+        <Button onPress={()=>callback('desc',  stories)}  title=" > " > '    </Button>
+        <Button onPress={()=>callback('asc', stories)}  title=" < " >      </Button>
+        <Button onPress={()=>callback('asc', [])}        title="oldest">    </Button>
+    </View>
+
+
+/******************************************************************************************
+ * FetchStories fetches a new set of stories when its props change.
+ *   It doesn't render anything, so render simply returns null.
+ *   However, it must do http requests, which is done at componentDidMount().
+ *   Doing it at render() causes an update loop between FetchStories and its container.
+ *
+ * Question: could this.props.callback change by the time the future executes?
+ *    Maybe we should bind it to a local variable so it is part of the closure and is unmodified.
+ */
+class FetchStories extends Component {
+    constructor(props) {
+        super(props);
+        console.error("new FetchStories: %o\n", this);
+    }
+
+    render() {
+        console.error("FetchStories.render: %o\n", this);
+
+        // Get the stories and invoke the callback function when they arrive.
+        //const callback = this.props.callback;
+        this.props.http.get('Widget.php', {
+            params: {
+                animal_id: this.props.animalId,
+                shelter_code: this.props.shelterCode,
+                id: this.props.id,
+                dir: this.props.dir,
+                count: this.props.count
+            }
+        })
+            .then(result => this.props.callback(result.data.stories))
+            .catch(reason => console.log("ERROR in http.get", reason));
+        return null;
+    }
 
 
 
 
-function FetchStories ({http, animalId, shelterCode, id, dir, count, callback})  {
+    shouldComponentUpdate(newProps, newState) {
 
-    // Get the stories and invoke the callback function when they arrive.
-    http.get('Widget.php', {
-        params: {
-            animal_id: animalId,
-            shelter_code: shelterCode,
-            id: id,
-            dir: dir,
-            count: count
-        }
-    })
-        .then(result => callback(result.data.stories))
-        .catch(reason => console.log("ERROR in http.get", reason));
+        let same = this.props.animalId === newProps.animalId &&
+            this.props.count === newProps.count &&
+            this.props.dir === newProps.dir;
 
-    return null
+        console.error("componentShouldUpdate %o: newProps=%o newState=%o same=%o\n", this, newProps, newState, same);
+        return !same;
+    }
+
+    willReceiveProps(newProps) {
+        console.error("willReceiveProps %o: newProps=%o\n", this, newProps)
+    }
+
+    componentDidMount(){
+        console.error("FetchStories.componentDidMount %o\n", this);
+    }
+    componentDidUpdate() {
+        console.error("FetchStories.componentDidMount: %o\n", this);
+
+    }
 }
 
 
 
 
 const StoryList = ({stories}) =>
-    <ul>
-        {stories.map((story) => <StoryItem key={story.story_id} story={story}> </StoryItem>)}
-    </ul>
+    <ScrollView contentContainerStyle={{alignItems:'flex-start'}}>
+        {stories.map((story) =>
+            <StoryItem key={story.story_id} story={story}> </StoryItem>)}
+    </ScrollView>
 
 
 const StoryItem = ({story}) =>
-    <li> {story.story_id} <StoryPhoto story={story}/> {story.story} </li>
+    <View style={{flexDirection:'row'}}>
+        <StoryPhoto story={story}/>
+        <Text style={{textAlign:'left'}}> {story.story} </Text>
+    </View>
 
 
 const StoryPhoto = ({story}) =>
     story.photo_url?
-        <img height="42" width="42" src={"http://adoptmeapp.org/" + story.photo_url} alt="Missing"></img>:
-        <span height="42" width="42"> No Photo </span>
+        <Image style={{height:220, width:220}} source={{uri:"http://adoptmeapp.org/" + story.photo_url}}></Image>:
+        <Text style={{height:220, width:220}} >No Photo</Text>
 
 
 
