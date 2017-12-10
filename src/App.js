@@ -11,10 +11,8 @@ class App extends Component {
           <img src={logo} className="App-logo" alt="logo" />
           <h1 className="App-title">Welcome to React</h1>
         </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.js</code> and save to reload.
-        </p>
-          <Widget baseURL="http://localhost:8080/api/v2/" count="15"></Widget>
+
+          <Widget server="http://localhost:8080"  count="15"></Widget>
       </div>
     );
   }

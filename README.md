@@ -35,3 +35,35 @@ Steps (partially ordered)
   
 Current using:
   - react-native-web
+  
+  
+Attempted to use Component for http requests
+    Problem. If done during "render" as a function, results in same request being repeated
+    multiple times, cycling every second.
+    
+Instead, made it a class
+   - issue request during "mounted"
+        but only issues request at startup.
+   - added request during willUpdate???,
+        but had to compare new props with old props to
+        to avoid repetitive requests.
+   - New problem: can't reissue the same request twice in a row.
+   
+Maybe, add a "request number" to state?
+
+Overall, this is probably the wrong approach.
+Maybe treat it like a signal, as a stream of requests.
+Requests get mapped to future completions,
+which get mapped to desired data, which cause updates.
+
+Rather than passing callbacks, pass a signal instead.
+The signal updates state at some higher level, which propagates
+downward as properties. 
+Maybe the intermediate state isn't necessary, which would 
+make things even more "functional".
+
+A dummy "n+1" incrementor on the signal could ensure each event
+gets processed if desired. Is that kosher?
+Kind of like including current timestamp in event, so it should be.
+    
+    
